@@ -1,4 +1,4 @@
-// ENVIRO
+/*// ENVIRO
 #include <ecalhdf5/eh5_meas.h>
 
 #include <stdio.h>
@@ -16,13 +16,24 @@
 #define THROW_IF_ZERO(val) {if (!val) throw_line("Value "#val"is zero");}
 
 using json = nlohmann::json;
+struct EnviroData {
+    std::string ID = "123456";
+    uint32_t timestamp_sec;
+    uint32_t timestamp_nanosec;
+    double temperature;
+    double pressure;
+    double humidity;
+};
 
 // Declarations
 
 int main(int argc, char** argv)
 {
-    std::string meas_path = "/home/aru/ecal_meas/2022-10-27_14-49-54.023_measurement";
-    std::string channel_name = "rt/enviro_data";
+    std::string meas_path = "/home/orin/ecal_meas/2022-11-15_13-10-27.417_measurement";
+    std::string channel_name = "rt/radar_data";
+    
+    //open json file to write to 
+    std::ofstream o("radar1.json");    
     
     eCAL::eh5::HDF5Meas enviro_meas_(meas_path);
 
@@ -31,7 +42,6 @@ int main(int argc, char** argv)
         std::cout << "Problem with measurement file." << std::endl;
         return 0;
     }
-
     // --------------------
     // Metadata
     // --------------------
@@ -65,8 +75,7 @@ int main(int argc, char** argv)
         std::cout << "--------------------------------------------" << std::endl;
         std::cout << "Retrieved Data: "<< std::endl;
         std::cout << "ID: " << it->ID << std::endl;
-    
-        
+
         // Split data into correct format based on Image struct in msgs.hpp
 
         uint64_t size_of_frameid;
@@ -75,58 +84,49 @@ int main(int argc, char** argv)
 
         uint32_t timestamp_sec;
         uint32_t timestamp_nanosec;
-
-        double temperature;
-        double pressure;
-        double humidity;
-
+        uint32_t frame_size;
+        
         int ptr = 0;
         
         std::memcpy(&timestamp_sec, &data[ptr], sizeof(timestamp_sec));
         std::cout << "Timestamp secs: " <<  timestamp_sec << std::endl;
-
         ptr += sizeof(timestamp_sec);
+
         std::memcpy(&timestamp_nanosec, &data[ptr], sizeof(timestamp_nanosec));
         std::cout << "Timestamp nanosecs: " <<  timestamp_nanosec << std::endl;
-
         ptr += sizeof(timestamp_nanosec);
-        std::memcpy(&size_of_frameid, &data[ptr], sizeof(size_of_frameid));
-        //std::cout << "Size of frame id: " <<  size_of_frameid << std::endl;
 
+        std::memcpy(&size_of_frameid, &data[ptr], sizeof(size_of_frameid));
         ptr += sizeof(size_of_frameid);
+
         uint8_t *frame_id_cstring = (uint8_t*)malloc((size_t)size_of_frameid);
         std::memcpy(&frame_id_cstring, &data[ptr], sizeof(frame_id_cstring));
         std::string s = (const char*)&frame_id_cstring;
         ID = s;
         std::cout << "Frame ID: " <<  ID << std::endl;
-    
         ptr += size_of_frameid;
-        std::memcpy(&temperature, &data[ptr], sizeof(temperature));
-        std::cout << "Temperature: " <<  temperature << std::endl;
 
-        ptr += sizeof(temperature);
-        std::memcpy(&pressure, &data[ptr], sizeof(pressure));
-        std::cout << "Pressure: " <<  pressure << std::endl;
+        std::memcpy(&frame_size, &data[ptr], sizeof(frame_size));
+        std::cout << "Frame Size: " <<  frame_size << std::endl;
+        ptr += sizeof(frame_size);
 
-        ptr += sizeof(pressure);
-        std::memcpy(&humidity, &data[ptr], sizeof(humidity));
-        std::cout << "Humidity: " <<  humidity << std::endl;
+        std::vector<uint8_t> frame_data(data + ptr,data+ ptr + frame_size);
+        std::cout << "DATA tmp size: " << sizeof(frame_data) << std::endl;
 
-        // SAVE ENVIRO DATA IN JSON
+        //std::memcpy(&frame_data, &data[ptr], (size_t)(frame_size));
+        //std::cout << "Frame Data: " << frame_data <<std::endl;
+    
+        // SAVE RADAR DATA IN JSON
         json j;
         j["timestamp_secs"] = timestamp_sec;
         j["timestamp_nanosecs"] = timestamp_nanosec;
         j["frame_id"] = ID;
-        j["temperature"] = temperature;
-        j["pressure"] = pressure;
-        j["humidity"] = humidity;
+        j["frame_size"] = frame_size;
+        j["frame_data"] = frame_data;
 
         // write 
-        std::ofstream o("enviro.json");
-        o << std::setw(4) << j << std::endl;
-
-
-
+        std::ofstream o("radar1.json");    
+        o << std::setw(4) << j << std::endl; 
         
     }
 
@@ -135,7 +135,7 @@ int main(int argc, char** argv)
     return 0;
 } 
 
-
+*/
 
 /* // BOSON
 #include <ecalhdf5/eh5_meas.h>
@@ -284,7 +284,11 @@ int main(int argc, char** argv)
 } 
 */
 
-/* // XIMEA
+// XIMEA
+    //std::string meas_path = "/home/orin/ecal_meas/2022-10-19_17-16-00.841_measurement";
+    //std::string cam_context_path = "/home/aru/repos/ximea_stuff/ecal_ximea/img/cam_context.bin";
+    //std::string channel_name = "rt/image_raw";
+    //std::atring out_path = "/home/orin/m2s2_ecal_deserializers/test_ximea/";
 #include <ecalhdf5/eh5_meas.h>
 
 #include <m3api/xiApi.h>
@@ -309,7 +313,7 @@ void read_bin_file(std::string src_path, char* dest, int size);
 
 int main(int argc, char** argv)
 {
-    std::string meas_path = "/home/aru/ecal_meas/2022-10-19_17-16-00.841_measurement";
+    std::string meas_path = "/home/orin/ecal_meas/2022-10-19_17-16-00.841_measurement";
     std::string cam_context_path = "/home/aru/repos/ximea_stuff/ecal_ximea/img/cam_context.bin";
     std::string channel_name = "rt/image_raw";
     int height = 1088, width = 2048;
@@ -510,4 +514,4 @@ void read_bin_file(std::string src_path, char* dest, int size){
         std::cout << "Error Reading File" << std::endl;
     }
 
-} */
+} 

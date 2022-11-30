@@ -22,9 +22,9 @@ namespace m2s2{ namespace ecal{ namespace deserializer{
     };
 
     struct ThermalRaw : BaseMsg {
-
-        uint32_t height;
-        uint32_t width;
+        //change for new recording of boson messages to uint32_t
+        uint16_t height;
+        uint16_t width;
 
         uint64_t data_size;
         uint16_t* data;
@@ -38,9 +38,16 @@ namespace m2s2{ namespace ecal{ namespace deserializer{
 
     struct EnviroData : BaseMsg {
 
-        float temperature;
-        float pressure;
-        float humidity;
+        double temperature;
+        double pressure;
+        double humidity;
+        
+    };
+
+    struct RadarFrame : BaseMsg {
+        
+        uint32_t frame_size;
+        uint8_t* frame_data;
     };
     
 }}} // namespace m2s2, ecal, deserializer

@@ -2,12 +2,20 @@
 
 
 int main(int argc, char** argv){
+    //https://drive.google.com/drive/folders/1CwvUMmM0ryNN6WCilG9mI8PES1_DKQ4m?usp=sharing
 
-    std::string meas_path = "/home/aru/ecal_meas/2022-10-19_17-16-00.841_measurement";
-    std::string cam_context_path = "/home/aru/repos/ximea_stuff/ecal_ximea/img/cam_context.bin";
+    std::string meas_path = "/home/orin/Downloads/2022-11-30_15-17-43.373_measurement-20221130T132535Z-001/2022-11-30_15-17-43.373_measurement";
+    std::string cam_context_path = "/home/orin/Downloads/2022-11-30_15-17-43.373_measurement-20221130T132535Z-001/2022-11-30_15-17-43.373_measurement/cam_context.bin";
     std::string channel_name = "rt/image_raw";
+    std::string out_path_raw = "/home/orin/m2s2_ecal_deserializers/test_ximea/raw/";
+    std::string out_path = "/home/orin/m2s2_ecal_deserializers/test_ximea/rgb/";
 
-    m2s2::ecal::deserializer::DeserializerXimea xi_deserializer(meas_path, channel_name, cam_context_path);
+    //std::string meas_path =         argv[1];
+    //std::string channel_name =      argv[2];
+    //std::string cam_context_path =  argv[3];
+    //std::string out_path =          argv[4];
+
+    m2s2::ecal::deserializer::DeserializerXimea xi_deserializer(meas_path, channel_name, cam_context_path, out_path, out_path_raw);
 
     xi_deserializer.process_all();
 
@@ -16,9 +24,11 @@ int main(int argc, char** argv){
 
 namespace m2s2{ namespace ecal{ namespace deserializer{
 
-    DeserializerXimea::DeserializerXimea(std::string meas_path, std::string channel_name, std::string cam_context_path) :
+    DeserializerXimea::DeserializerXimea(std::string meas_path, std::string channel_name, std::string cam_context_path, std::string out_path, std::string out_path_raw) :
         Deserializer(meas_path, channel_name),
-        cam_context_path(cam_context_path)
+        cam_context_path(cam_context_path),
+        out_path(out_path),
+        out_path_raw(out_path_raw)
   
     {
         this->camh = NULL;
@@ -58,24 +68,22 @@ namespace m2s2{ namespace ecal{ namespace deserializer{
             return this->msg;
         }
 
-        // COPY this->msg context to an Image struct
+        // Copy this->msg context to an Image struct
+        
         //Timestamp
         int ptr = 0;
         std::memcpy(&(this->msg.timestamp_sec), &data[ptr], sizeof((this->msg.timestamp_sec)));
         std::cout << "Timestamp secs: " <<  (this->msg.timestamp_sec) << std::endl;
-        //std::cout << "PTR: " <<  ptr << std::endl;
 
         ptr += sizeof(this->msg.timestamp_sec);
         std::memcpy(&this->msg.timestamp_nanosec, &data[ptr], sizeof(this->msg.timestamp_nanosec));
         std::cout << "Timestamp nanosecs: " <<  this->msg.timestamp_nanosec << std::endl;
-        //std::cout << "PTR: " <<  ptr << std::endl;
 
         ptr += sizeof(this->msg.timestamp_nanosec);
 
         // Frame ID
         uint64_t size_of_frameid;
         std::memcpy(&size_of_frameid, &data[ptr], sizeof(size_of_frameid));
-        //std::cout << "PTR: " <<  ptr << std::endl;
 
         ptr += sizeof(size_of_frameid);
         uint8_t *frame_id_cstring = (uint8_t*)malloc((size_t)size_of_frameid);
@@ -87,20 +95,16 @@ namespace m2s2{ namespace ecal{ namespace deserializer{
         ptr += size_of_frameid;
         std::memcpy(&(this->msg.height), &data[ptr], sizeof((this->msg.height)));
         std::cout << "Height: " <<  (this->msg.height) << std::endl;
-        //std::cout << "PTR: " <<  ptr << std::endl;
 
         ptr += sizeof(this->msg.height);
         std::memcpy(&(this->msg.width), &data[ptr], sizeof((this->msg.width)));
         std::cout << "Width: " <<  (this->msg.width) << std::endl;
-        //std::cout << "PTR: " <<  ptr << std::endl;
 
         ptr += sizeof(this->msg.width);
 
         // Encoding
         uint64_t size_of_encoding;
         std::memcpy(&size_of_encoding, &data[ptr], sizeof(size_of_encoding));
-        //std::cout << "Size of Encoding String: " <<  size_of_encoding << std::endl;
-        //std::cout << "PTR: " <<  ptr << std::endl;
         
         ptr += sizeof(size_of_encoding);
         uint8_t *encoding_cstring = (uint8_t*)malloc(size_of_encoding);
@@ -111,24 +115,18 @@ namespace m2s2{ namespace ecal{ namespace deserializer{
         ptr += size_of_encoding;
         std::memcpy(&(this->msg.is_bigendian), &data[ptr], sizeof((this->msg.is_bigendian)));
         std::cout << "Is Bigendian?: " <<  (this->msg.is_bigendian) << std::endl;
-        //std::cout << "PTR: " <<  ptr << std::endl;
 
         ptr += sizeof(this->msg.is_bigendian);
         std::memcpy(&(this->msg.step), &data[ptr], sizeof((this->msg.step)));
         std::cout << "Step: " <<  (this->msg.step) << std::endl;
-        //std::cout << "PTR: " <<  ptr << std::endl;
 
         ptr += sizeof(this->msg.step);
         std::memcpy(&(this->msg.data_size), &data[ptr], sizeof((this->msg.data_size)));
         std::cout << "Data size: " <<  (this->msg.data_size) << std::endl;
-        //std::cout << "PTR: " <<  ptr << std::endl;
 
         ptr += sizeof(this->msg.data_size);
         this->msg.data = (uint8_t*)malloc((size_t)this->msg.data_size);
         std::memcpy(&this->msg.data[0], &data[ptr], (size_t)(this->msg.data_size));    
-        //this->msg.data = data_tmp;
-        std::cout << "Data COPIED " << std::endl;
-        //std::cout << "DATA: " << this->msg.data[0] << std::endl;
         
         std::cout << "DONE DESERIALIZING" << std::endl;
 
@@ -138,28 +136,31 @@ namespace m2s2{ namespace ecal{ namespace deserializer{
     }
 
     void DeserializerXimea::process_message(struct BaseMsg* msg_){
+
+        // Save raw image
+        cv::Mat img_mat_raw = cv::Mat(this->msg.height, this->msg.width, CV_8UC1, this->msg.data);
+        std::string timestr_raw = std::to_string(this->msg.timestamp_sec) + "_" + std::to_string(this->msg.timestamp_nanosec);
+        std::string img_name_raw = this->out_path_raw + this->msg.ID + "_" + timestr_raw + ".tiff";        
+        cv::imwrite(img_name_raw, img_mat_raw);
+        std::cout << "Raw Image Saved" << std::endl;
         
         std::cout << std::endl << "Processing Ximea Image" << std::endl;
         struct Image* msg = (struct Image*)msg_;
-        std::cout << "DATA: " << std::endl; 
         XI_IMG out_image;
 
         out_image.size = sizeof(XI_IMG);
-        std::cout << "Out image size: " << out_image.size << std::endl; 
         out_image.bp = NULL;
         out_image.bp_size = 0;
        
         XI_CARE(xiProcPushImage(this->proc, this->msg.data));
-        std::cout << "Proc: " << this->proc <<std::endl; 
-
         XI_CARE(xiProcPullImage(this->proc, 0, &out_image));
-        std::cout << "Ximea Processed Image" << std::endl;
-
+        
         std::cout << "image height: " << out_image.height << std::endl;
         std::cout << "image width: " << out_image.width << std::endl;
 
         cv::Mat img_mat_rgb = cv::Mat(out_image.height, out_image.width, CV_8UC4, out_image.bp);
-        std::string img_name_rgb = "/home/aru/repos/ximea_stuff/ecal_ximea/img/rgb/" + this->msg.ID + ".jpeg";        
+        std::string timestr = std::to_string(this->msg.timestamp_sec) + "_" + std::to_string(this->msg.timestamp_nanosec);
+        std::string img_name_rgb = this->out_path + this->msg.ID + "_" + timestr + ".jpeg";        
         cv::imwrite(img_name_rgb, img_mat_rgb);
         std::cout << "Image Saved" << std::endl;
     }

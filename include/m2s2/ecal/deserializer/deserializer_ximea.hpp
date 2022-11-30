@@ -30,7 +30,9 @@ class DeserializerXimea : public m2s2::ecal::deserializer::Deserializer
     DeserializerXimea(
         std::string meas_path,
         std::string channel_name,
-        std::string cam_context_path
+        std::string cam_context_path,
+        std::string out_path,
+        std::string out_path_raw
     );
 
     ~DeserializerXimea() = default;
@@ -45,13 +47,13 @@ class DeserializerXimea : public m2s2::ecal::deserializer::Deserializer
     void read_bin_file(std::string src_path, char* dest, int size);
     
     private:
-    std::string cam_context_path;
+    std::string cam_context_path, out_path, out_path_raw;
     HANDLE camh;
     char* cam_context;
     xiProcessingHandle_t proc;
     struct Image msg;
 };
 
-}}} // namesspaces
+}}} // namespaces
 
 #endif
